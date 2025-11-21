@@ -1,0 +1,7 @@
+sonar.projectKey=DevWeb-Clients
+sonar.projectName=Portail Clients DevWeb
+sonar.projectVersion=1.0
+sonar.sources=.
+sonar.host.url=http://localhost:9000
+sonar.login=YOUR_TOKEN_HERE
+sonar.sourceEncoding=UTF-8
