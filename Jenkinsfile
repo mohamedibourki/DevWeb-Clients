@@ -1,23 +1,56 @@
 pipeline {
     agent any
     
+    tools {
+        sonarScanner 'sonar-scanner'
+    }
+    
     environment {
         SONAR_TOKEN = credentials('SONAR_TOKEN_CREDENTIAL_ID')
     }
     
     stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar-server') {
-                    sh '''
+                    sh """
                         sonar-scanner \
-                        -Dsonar.projectKey=your-project-key \
+                        -Dsonar.projectKey=DevWeb-Clients \
+                        -Dsonar.projectName="DevWeb Clients" \
                         -Dsonar.sources=. \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${SONAR_TOKEN}
-                    '''
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.login=${SONAR_TOKEN} \
+                        -Dsonar.projectVersion=1.0 \
+                        -Dsonar.sourceEncoding=UTF-8
+                    """
                 }
             }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'SonarQube analysis completed'
+        }
+        success {
+            echo 'Quality Gate passed!'
+        }
+        failure {
+            echo 'Quality Gate failed or analysis failed'
         }
     }
 }
