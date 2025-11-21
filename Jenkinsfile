@@ -16,7 +16,6 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # Install to /tmp so it's accessible across stages
                         if [ ! -f "/tmp/sonar-scanner/bin/sonar-scanner" ]; then
                             echo "Installing SonarScanner..."
                             cd /tmp
@@ -36,7 +35,6 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonar-server') {
                     sh '''
-                        # Use absolute path to sonar-scanner
                         /tmp/sonar-scanner/bin/sonar-scanner \
                         -Dsonar.projectKey=DevWeb-Clients \
                         -Dsonar.projectName="DevWeb Clients" \
@@ -52,7 +50,7 @@ pipeline {
         
         stage('Quality Gate') {
             steps {
-                timeout(time: 1, unit: 'HOURS') {
+                timeout(time: 10, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
