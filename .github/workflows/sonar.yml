@@ -32,17 +32,19 @@ jobs:
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       run: |
         echo "Sonar host: ${SONAR_HOST_URL}"
-        # Fail if host is localhost / 127.0.0.1 as runner cannot reach local servers
-        if [[ "${SONAR_HOST_URL}" =~ ^(http://)?(localhost|127\.0\.0\.1) ]]; then
-          echo "ERROR: SONAR_HOST_URL points to localhost (not reachable from GitHub Actions)."
-          echo "Set repository secret SONAR_HOST_URL to a reachable SonarQube/SonarCloud URL."
-          exit 1
+        # If host points to localhost or 127.0.0.1, runners cannot reach it — mark scan to skip
+        if [[ -z "${SONAR_HOST_URL}" ]] || [[ "${SONAR_HOST_URL}" =~ ^(http://)?(localhost|127\.0\.0\.1) ]]; then
+          echo "WARNING: SONAR_HOST_URL is empty or points to localhost (not reachable from GitHub Actions)."
+          echo "Skipping Sonar scan for this run."
+          echo "SKIP_SONAR=true" >> $GITHUB_ENV
+        else
+          # Quick reachability check; if unreachable, mark skip but do not fail the job
+          if ! curl --head --silent --fail "${SONAR_HOST_URL}" >/dev/null; then
+            echo "WARNING: Cannot reach SONAR_HOST_URL (${SONAR_HOST_URL}). Skipping Sonar scan."
+            echo "SKIP_SONAR=true" >> $GITHUB_ENV
+          fi
         fi
-        # Quick reachability check
-        if ! curl --head --silent --fail "${SONAR_HOST_URL}" >/dev/null; then
-          echo "ERROR: Cannot reach SONAR_HOST_URL (${SONAR_HOST_URL}). Verify the URL and network access."
-          exit 1
-        fi
+
         # Remove any stale scanner state in the repo
         rm -rf .scannerwork || true
     - name: SonarQube Scan
@@ -51,5 +53,11 @@ jobs:
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
       run: |
+        # If previous step set SKIP_SONAR=true, skip actual scan to avoid failure
+        if [ "${SKIP_SONAR:-false}" = "true" ]; then
+          echo "Skipping SonarQube analysis because SONAR_HOST_URL is not reachable or is local."
+          exit 0
+        fi
+
         chmod +x ci/sonar-scan.sh
         ci/sonar-scan.sh
