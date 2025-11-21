@@ -48,10 +48,50 @@ pipeline {
             }
         }
         
+        stage('Wait for Analysis Processing') {
+            steps {
+                script {
+                    // Wait for analysis to complete processing
+                    echo "Waiting for SonarQube to process analysis..."
+                    sleep time: 30, unit: 'SECONDS'
+                }
+            }
+        }
+        
         stage('Quality Gate') {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        // Retry logic for Quality Gate
+                        def maxRetries = 6
+                        def retryCount = 0
+                        def qg = null
+                        
+                        while (retryCount < maxRetries) {
+                            try {
+                                qg = waitForQualityGate abortPipeline: false
+                                echo "Quality Gate status: ${qg.status}"
+                                
+                                if (qg.status == 'OK' || qg.status == 'ERROR') {
+                                    break
+                                }
+                                
+                                if (qg.status == 'IN_PROGRESS' || qg.status == 'PENDING') {
+                                    retryCount++
+                                    echo "Analysis still processing. Retry ${retryCount}/${maxRetries}. Waiting 30 seconds..."
+                                    sleep time: 30, unit: 'SECONDS'
+                                }
+                            } catch (Exception e) {
+                                echo "Error checking Quality Gate: ${e.message}. Retrying..."
+                                retryCount++
+                                sleep time: 30, unit: 'SECONDS'
+                            }
+                        }
+                        
+                        if (qg?.status != 'OK') {
+                            error "Quality Gate failed: ${qg?.status ?: 'Unknown status'}"
+                        }
+                    }
                 }
             }
         }
@@ -60,6 +100,9 @@ pipeline {
     post {
         always {
             echo 'SonarQube analysis completed'
+        }
+        success {
+            echo 'Quality Gate passed!'
         }
     }
 }
