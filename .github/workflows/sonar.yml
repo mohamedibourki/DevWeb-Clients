@@ -12,6 +12,23 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Set up Java (required by SonarScanner)
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '11'
+    - name: Install SonarScanner CLI
+      env:
+        SCANNER_VERSION: 4.8.0.2856
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y unzip wget
+        echo "Downloading SonarScanner CLI v${SCANNER_VERSION}..."
+        wget -q -O /tmp/sonar-scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VERSION}-linux.zip"
+        unzip -q /tmp/sonar-scanner.zip -d /tmp
+        ls -la /tmp
+        echo "Adding SonarScanner to PATH"
+        echo "/tmp/sonar-scanner-${SCANNER_VERSION}-linux/bin" >> $GITHUB_PATH
     - name: SonarQube Scan
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
