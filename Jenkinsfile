@@ -2,7 +2,8 @@ pipeline {
     agent any
     
     tools {
-        sonarRunner 'sonar-scanner'  // Use 'sonarRunner' instead of 'sonarScanner'
+        // Use one of these exact identifiers from the error message
+        hudson.plugins.sonar.SonarRunnerInstallation 'sonar-scanner'
     }
     
     environment {
@@ -39,12 +40,6 @@ pipeline {
                     waitForQualityGate abortPipeline: true
                 }
             }
-        }
-    }
-    
-    post {
-        always {
-            echo 'SonarQube analysis completed'
         }
     }
 }
