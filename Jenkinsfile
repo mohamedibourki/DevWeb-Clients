@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-        sonarScanner 'sonar-scanner'
+        sonarRunner 'sonar-scanner'  // Use 'sonarRunner' instead of 'sonarScanner'
     }
     
     environment {
@@ -45,12 +45,6 @@ pipeline {
     post {
         always {
             echo 'SonarQube analysis completed'
-        }
-        success {
-            echo 'Quality Gate passed!'
-        }
-        failure {
-            echo 'Quality Gate failed or analysis failed'
         }
     }
 }
