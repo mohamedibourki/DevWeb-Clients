@@ -15,16 +15,17 @@ pipeline {
         stage('Install SonarScanner') {
             steps {
                 script {
-                    // Check if sonar-scanner is installed, if not install it
                     sh '''
-                        if ! command -v sonar-scanner &> /dev/null; then
+                        # Install to /tmp so it's accessible across stages
+                        if [ ! -f "/tmp/sonar-scanner/bin/sonar-scanner" ]; then
                             echo "Installing SonarScanner..."
+                            cd /tmp
                             wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006.zip
                             unzip -q sonar-scanner-cli-5.0.1.3006.zip
-                            export PATH=$PWD/sonar-scanner-5.0.1.3006/bin:$PATH
+                            mv sonar-scanner-5.0.1.3006 sonar-scanner
                             echo "SonarScanner installed successfully"
                         else
-                            echo "SonarScanner is already installed"
+                            echo "SonarScanner already installed"
                         fi
                     '''
                 }
@@ -35,8 +36,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonar-server') {
                     sh '''
-                        # Use the installed sonar-scanner
-                        sonar-scanner \
+                        # Use absolute path to sonar-scanner
+                        /tmp/sonar-scanner/bin/sonar-scanner \
                         -Dsonar.projectKey=DevWeb-Clients \
                         -Dsonar.projectName="DevWeb Clients" \
                         -Dsonar.sources=. \
@@ -61,12 +62,6 @@ pipeline {
     post {
         always {
             echo 'SonarQube analysis completed'
-        }
-        success {
-            echo 'Quality Gate passed!'
-        }
-        failure {
-            echo 'Quality Gate failed or analysis failed'
         }
     }
 }
