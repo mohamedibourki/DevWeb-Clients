@@ -7,6 +7,16 @@ echo "   Project: ${SONAR_PROJECT_NAME:-Not set}"
 echo "   Build: ${BUILD_VERSION:-Not set}"
 echo "   SonarQube: ${SONAR_HOST_URL:-Not set}"
 
+# In CI, fail fast if SONAR_HOST_URL points to localhost
+if [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${CI:-}" ]; then
+    if [[ "${SONAR_HOST_URL:-}" =~ ^(http://)?(localhost|127\.0\.0\.1) ]]; then
+        echo "❌ ERROR: SONAR_HOST_URL is set to localhost (${SONAR_HOST_URL})."
+        echo "GitHub Actions runners cannot reach services on your local machine."
+        echo "Set the secret SONAR_HOST_URL to a publicly accessible SonarQube or use SonarCloud."
+        exit 1
+    fi
+fi
+
 # Try to fallback to sonar-project.properties if SONAR_PROJECT_KEY not set
 if [ -z "$SONAR_PROJECT_KEY" ] && [ -f sonar-project.properties ]; then
     KEY_LINE=$(grep -E '^sonar.projectKey=' sonar-project.properties || true)

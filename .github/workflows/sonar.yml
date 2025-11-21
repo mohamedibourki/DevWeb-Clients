@@ -26,9 +26,25 @@ jobs:
         echo "Downloading SonarScanner CLI v${SCANNER_VERSION}..."
         wget -q -O /tmp/sonar-scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VERSION}-linux.zip"
         unzip -q /tmp/sonar-scanner.zip -d /tmp
-        ls -la /tmp
-        echo "Adding SonarScanner to PATH"
         echo "/tmp/sonar-scanner-${SCANNER_VERSION}-linux/bin" >> $GITHUB_PATH
+    - name: Validate Sonar host and clean prior scanner state
+      env:
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      run: |
+        echo "Sonar host: ${SONAR_HOST_URL}"
+        # Fail if host is localhost / 127.0.0.1 as runner cannot reach local servers
+        if [[ "${SONAR_HOST_URL}" =~ ^(http://)?(localhost|127\.0\.0\.1) ]]; then
+          echo "ERROR: SONAR_HOST_URL points to localhost (not reachable from GitHub Actions)."
+          echo "Set repository secret SONAR_HOST_URL to a reachable SonarQube/SonarCloud URL."
+          exit 1
+        fi
+        # Quick reachability check
+        if ! curl --head --silent --fail "${SONAR_HOST_URL}" >/dev/null; then
+          echo "ERROR: Cannot reach SONAR_HOST_URL (${SONAR_HOST_URL}). Verify the URL and network access."
+          exit 1
+        fi
+        # Remove any stale scanner state in the repo
+        rm -rf .scannerwork || true
     - name: SonarQube Scan
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
